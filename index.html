@@ -6,10 +6,11 @@
 <title>Smart Home Control - Mobile</title>
 <style>
   html, body {
-    margin: 0; padding: 0;
-    width: 100%; height: 100%;
+    margin:0; padding:0;
+    width:100%; height:100%;
     font-family: Arial, sans-serif;
     overflow-x: hidden;
+    background: #f4f4f9;
   }
 
   #homeContainer {
@@ -23,16 +24,14 @@
   /* Light */
   #light {
     position: absolute;
-    top: 20%;       /* percentage positions for mobile */
+    top: 20%;
     left: 25%;
     width: 15%;
     max-width: 80px;
-    border-radius: 50%;
     transition: all 0.3s ease;
   }
   #light.on {
-    filter: drop-shadow(0 0 40px #ffff00);
-    box-shadow: 0 0 20px #ffff00, 0 0 40px #ffff00;
+    filter: drop-shadow(0 0 25px yellow);
   }
   #lightSwitch {
     position: absolute;
@@ -45,6 +44,13 @@
     border-radius: 6px;
     background: #fff;
     cursor: pointer;
+  }
+  #lightStatus {
+    position: absolute;
+    top: 30%;
+    left: 25%;
+    font-weight: bold;
+    color: yellow;
   }
 
   /* Fan */
@@ -59,7 +65,7 @@
   #fan.on {
     animation: spin 1s linear infinite;
   }
-  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  @keyframes spin { from { transform: rotate(0deg);} to { transform: rotate(360deg);} }
   #fanSwitch {
     position: absolute;
     top: 35%;
@@ -71,6 +77,13 @@
     border-radius: 6px;
     background: #fff;
     cursor: pointer;
+  }
+  #fanStatus {
+    position: absolute;
+    top: 30%;
+    left: 65%;
+    font-weight: bold;
+    color: #3498db;
   }
 
   /* Voice button fixed at bottom */
@@ -88,7 +101,7 @@
     cursor: pointer;
   }
 
-  /* Optional: result text */
+  /* Recognized voice text */
   #result {
     position: fixed;
     bottom: 12%;
@@ -104,12 +117,17 @@
 </head>
 <body>
 <div id="homeContainer">
+  <!-- Light -->
   <img id="light" src="light.png" alt="Light">
+  <div id="lightStatus">OFF</div>
   <button id="lightSwitch">Toggle Light</button>
 
+  <!-- Fan -->
   <img id="fan" src="fan.png" alt="Fan">
+  <div id="fanStatus">OFF</div>
   <button id="fanSwitch">Toggle Fan</button>
 
+  <!-- Voice -->
   <button id="voiceButton">🎤 Speak</button>
   <p id="result"></p>
 </div>
@@ -119,6 +137,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
 <script>
+  // 🔹 Replace with your Firebase config
   const firebaseConfig = {
       apiKey: "AIzaSyAUXlS3viZQoxLJseMILvekVgtaH3PgbSs",
       authDomain: "homecontrol-92c15.firebaseapp.com",
@@ -134,17 +153,29 @@
 
   const lightImg = document.getElementById("light");
   const fanImg = document.getElementById("fan");
+  const lightStatus = document.getElementById("lightStatus");
+  const fanStatus = document.getElementById("fanStatus");
   const resultText = document.getElementById("result");
 
   function updateVisuals(command) {
-    if (command.includes("turn on the light")) lightImg.classList.add("on");
-    else lightImg.classList.remove("on");
+    if (command.includes("turn on the light")) {
+      lightImg.classList.add("on");
+      lightStatus.innerText = "ON";
+    } else if (command.includes("turn off the light")) {
+      lightImg.classList.remove("on");
+      lightStatus.innerText = "OFF";
+    }
 
-    if (command.includes("turn on the fan")) fanImg.classList.add("on");
-    else fanImg.classList.remove("on");
+    if (command.includes("turn on the fan")) {
+      fanImg.classList.add("on");
+      fanStatus.innerText = "ON";
+    } else if (command.includes("turn off the fan")) {
+      fanImg.classList.remove("on");
+      fanStatus.innerText = "OFF";
+    }
   }
 
-  // Switch buttons
+  // Toggle switches
   document.getElementById("lightSwitch").onclick = () => {
     db.ref("command").set(lightImg.classList.contains("on") ? "turn off the light" : "turn on the light");
   }
@@ -162,6 +193,7 @@
     recognition.onresult = event => {
       let cmd = event.results[0][0].transcript.toLowerCase();
       resultText.innerText = "Heard: " + cmd;
+
       if (cmd.includes("light on") || cmd.includes("turn on the light")) cmd = "turn on the light";
       else if (cmd.includes("light off") || cmd.includes("turn off the light")) cmd = "turn off the light";
       else if (cmd.includes("fan on") || cmd.includes("turn on the fan")) cmd = "turn on the fan";
