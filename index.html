@@ -1,51 +1,125 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ESP32 Voice Control</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      background: #f0f0f0;
-      padding: 20px;
-    }
-    h1 { color: #333; }
-    button {
-      padding: 15px 25px;
-      font-size: 18px;
-      border: none;
-      border-radius: 12px;
-      background: #4CAF50;
-      color: white;
-      cursor: pointer;
-    }
-    button:hover { background: #45a049; }
-    #result { margin-top: 20px; font-size: 20px; color: #333; }
-    ul { text-align: left; display: inline-block; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Home Control - Mobile</title>
+<style>
+  html, body {
+    margin: 0; padding: 0;
+    width: 100%; height: 100%;
+    font-family: Arial, sans-serif;
+    overflow-x: hidden;
+  }
+
+  #homeContainer {
+    position: relative;
+    width: 100%; height: 100%;
+    background: url('backgound.jpg') no-repeat center center;
+    background-size: cover;
+    overflow: hidden;
+  }
+
+  /* Light */
+  #light {
+    position: absolute;
+    top: 20%;       /* percentage positions for mobile */
+    left: 25%;
+    width: 15%;
+    max-width: 80px;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+  }
+  #light.on {
+    filter: drop-shadow(0 0 40px #ffff00);
+    box-shadow: 0 0 20px #ffff00, 0 0 40px #ffff00;
+  }
+  #lightSwitch {
+    position: absolute;
+    top: 35%;
+    left: 27%;
+    width: 18%;
+    min-width: 60px;
+    padding: 5px;
+    font-size: 14px;
+    border-radius: 6px;
+    background: #fff;
+    cursor: pointer;
+  }
+
+  /* Fan */
+  #fan {
+    position: absolute;
+    top: 20%;
+    left: 65%;
+    width: 15%;
+    max-width: 80px;
+    transition: all 0.3s ease;
+  }
+  #fan.on {
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  #fanSwitch {
+    position: absolute;
+    top: 35%;
+    left: 67%;
+    width: 18%;
+    min-width: 60px;
+    padding: 5px;
+    font-size: 14px;
+    border-radius: 6px;
+    background: #fff;
+    cursor: pointer;
+  }
+
+  /* Voice button fixed at bottom */
+  #voiceButton {
+    position: fixed;
+    bottom: 5%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 12px 20px;
+    font-size: 16px;
+    border: none;
+    border-radius: 12px;
+    background: #e67e22;
+    color: white;
+    cursor: pointer;
+  }
+
+  /* Optional: result text */
+  #result {
+    position: fixed;
+    bottom: 12%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 14px;
+    background: rgba(255,255,255,0.8);
+    padding: 5px 10px;
+    border-radius: 8px;
+  }
+
+</style>
 </head>
 <body>
-  <h1>ESP32 Voice Control</h1>
-  <p>Press the button and speak a command like:</p>
-  <ul>
-    <li>"Turn on the light"</li>
-    <li>"Turn off the light"</li>
-    <li>"Turn on the fan"</li>
-    <li>"Turn off the fan"</li>
-  </ul>
-  <br><br>
-  <button onclick="startRecognition()">🎤 Speak</button>
+<div id="homeContainer">
+  <img id="light" src="light.png" alt="Light">
+  <button id="lightSwitch">Toggle Light</button>
+
+  <img id="fan" src="fan.png" alt="Fan">
+  <button id="fanSwitch">Toggle Fan</button>
+
+  <button id="voiceButton">🎤 Speak</button>
   <p id="result"></p>
+</div>
 
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
-  <script>
-    // 🔹 Replace these with your Firebase project config
-    const firebaseConfig = {
+<script>
+  const firebaseConfig = {
       apiKey: "AIzaSyAUXlS3viZQoxLJseMILvekVgtaH3PgbSs",
       authDomain: "homecontrol-92c15.firebaseapp.com",
       databaseURL: "https://homecontrol-92c15-default-rtdb.asia-southeast1.firebasedatabase.app",
@@ -55,39 +129,52 @@
       appId: "1:738580278931:web:8513ecc322866891dba766"
     };
 
-    // Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
 
-    function sendCommand(cmd) {
-      console.log("🔹 Sending command to Firebase:", cmd);
-      db.ref("command").set(cmd)
-        .then(() => console.log("✅ Command saved successfully"))
-        .catch(e => console.error("❌ Error saving command:", e));
-    }
+  const lightImg = document.getElementById("light");
+  const fanImg = document.getElementById("fan");
+  const resultText = document.getElementById("result");
 
-    function startRecognition() {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SpeechRecognition) {
-        alert("SpeechRecognition not supported in this browser. Use Chrome/Edge!");
-        return;
-      }
+  function updateVisuals(command) {
+    if (command.includes("turn on the light")) lightImg.classList.add("on");
+    else lightImg.classList.remove("on");
 
-      const recognition = new SpeechRecognition();
-      recognition.lang = "en-US";
-      recognition.start();
+    if (command.includes("turn on the fan")) fanImg.classList.add("on");
+    else fanImg.classList.remove("on");
+  }
 
-      recognition.onresult = event => {
-        let command = event.results[0][0].transcript.toLowerCase();
-        document.getElementById("result").innerText = "Heard: " + command;
-        sendCommand(command);
-      };
+  // Switch buttons
+  document.getElementById("lightSwitch").onclick = () => {
+    db.ref("command").set(lightImg.classList.contains("on") ? "turn off the light" : "turn on the light");
+  }
+  document.getElementById("fanSwitch").onclick = () => {
+    db.ref("command").set(fanImg.classList.contains("on") ? "turn off the fan" : "turn on the fan");
+  }
 
-      recognition.onerror = e => {
-        console.error("Speech recognition error:", e.error);
-        alert("Speech recognition error: " + e.error);
-      };
-    }
-  </script>
+  // Voice recognition
+  document.getElementById("voiceButton").onclick = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return alert("Browser does not support speech recognition!");
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.start();
+    recognition.onresult = event => {
+      let cmd = event.results[0][0].transcript.toLowerCase();
+      resultText.innerText = "Heard: " + cmd;
+      if (cmd.includes("light on") || cmd.includes("turn on the light")) cmd = "turn on the light";
+      else if (cmd.includes("light off") || cmd.includes("turn off the light")) cmd = "turn off the light";
+      else if (cmd.includes("fan on") || cmd.includes("turn on the fan")) cmd = "turn on the fan";
+      else if (cmd.includes("fan off") || cmd.includes("turn off the fan")) cmd = "turn off the fan";
+      db.ref("command").set(cmd);
+    };
+  }
+
+  // Real-time Firebase updates
+  db.ref("command").on("value", snapshot => {
+    const cmd = snapshot.val() ? snapshot.val().toLowerCase() : "";
+    updateVisuals(cmd);
+  });
+</script>
 </body>
 </html>
