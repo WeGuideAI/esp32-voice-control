@@ -8,9 +8,10 @@
     body {
       font-family: Arial, sans-serif;
       text-align: center;
-      background: #f5f5f5;
+      background: #f0f0f0;
       padding: 20px;
     }
+    h1 { color: #333; }
     button {
       padding: 15px 25px;
       font-size: 18px;
@@ -22,12 +23,13 @@
     }
     button:hover { background: #45a049; }
     #result { margin-top: 20px; font-size: 20px; color: #333; }
+    ul { text-align: left; display: inline-block; }
   </style>
 </head>
 <body>
   <h1>ESP32 Voice Control</h1>
-  <p>Press the button and say a command like:</p>
-  <ul style="text-align:left; display:inline-block;">
+  <p>Press the button and speak a command like:</p>
+  <ul>
     <li>"Turn on the light"</li>
     <li>"Turn off the light"</li>
     <li>"Turn on the fan"</li>
@@ -37,6 +39,55 @@
   <button onclick="startRecognition()">🎤 Speak</button>
   <p id="result"></p>
 
-  <script src="script.js"></script>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+  <script>
+    // 🔹 Replace these with your Firebase project config
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "homecontrol-92c15.firebaseapp.com",
+      databaseURL: "https://homecontrol-92c15-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "homecontrol-92c15",
+      storageBucket: "homecontrol-92c15.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    function sendCommand(cmd) {
+      console.log("🔹 Sending command to Firebase:", cmd);
+      db.ref("command").set(cmd)
+        .then(() => console.log("✅ Command saved successfully"))
+        .catch(e => console.error("❌ Error saving command:", e));
+    }
+
+    function startRecognition() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert("SpeechRecognition not supported in this browser. Use Chrome/Edge!");
+        return;
+      }
+
+      const recognition = new SpeechRecognition();
+      recognition.lang = "en-US";
+      recognition.start();
+
+      recognition.onresult = event => {
+        let command = event.results[0][0].transcript.toLowerCase();
+        document.getElementById("result").innerText = "Heard: " + command;
+        sendCommand(command);
+      };
+
+      recognition.onerror = e => {
+        console.error("Speech recognition error:", e.error);
+        alert("Speech recognition error: " + e.error);
+      };
+    }
+  </script>
 </body>
 </html>
